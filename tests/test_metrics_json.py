@@ -49,9 +49,19 @@ class TestJsonMetrics:
                 10351331,
             ),
             (
+                "borg_last_backup_deduplicated_compressed_size_human",
+                "/borg/backup-1",
+                "9.9 MiB",
+            ),
+            (
                 "borg_last_backup_deduplicated_compressed_size",
                 "/borg/backup-2",
                 18718565,
+            ),
+            (
+                "borg_last_backup_deduplicated_compressed_size_human",
+                "/borg/backup-2",
+                "17.9 MiB",
             ),
             ("borg_last_backup_compressed_size", "/borg/backup-1", 379050627),
             ("borg_last_backup_compressed_size_human", "/borg/backup-1", "361.5 MiB"),
