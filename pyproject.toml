@@ -8,6 +8,9 @@ authors = [
 ]
 packages = [{include = "src"}]
 
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
+
 [tool.poetry.scripts]
 borgmatic-exporter = 'src.cli:cli'
 
