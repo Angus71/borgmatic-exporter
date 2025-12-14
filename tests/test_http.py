@@ -42,11 +42,9 @@ def test_metrics_endpoint(server, mock_run_command):
         in response.text
     )
 
+
 def test_metrics_json_endpoint(server, mock_run_command):
     http = requests.Session()
     response = http.get("http://localhost:9996/metrics/json")
     assert '"borg_total_backups":' in response.text
-    assert (
-        '"borg_total_deduplicated_size":21296544339'
-        in response.text
-    )
+    assert '"borg_total_deduplicated_size":21296544339' in response.text
