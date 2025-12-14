@@ -161,7 +161,7 @@ def collect_json(borgmatic_configs: list):
             'borg_total_compressed_size': r["cache"]["stats"]["total_csize"],
             'borg_total_compressed_size_human': human_readable_bytes(r["cache"]["stats"]["total_csize"]),
             'borg_total_size': r["cache"]["stats"]["total_size"],
-            'borg_total_size': human_readable_bytes(r["cache"]["stats"]["total_size"]),
+            'borg_total_size_human': human_readable_bytes(r["cache"]["stats"]["total_size"]),
             'borg_total_deduplicated_compressed_size': r["cache"]["stats"]["unique_csize"],
             'borg_total_deduplicated_compressed_size_human': human_readable_bytes(r["cache"]["stats"]["unique_csize"]),
             'borg_total_deduplicated_size': r["cache"]["stats"]["unique_size"],
