@@ -1,9 +1,9 @@
-from flask import Blueprint, Flask, current_app, request
+from flask import Blueprint, Flask, current_app, request, jsonify
 from loguru import logger
 from prometheus_client.exposition import choose_encoder
 from waitress import serve
 
-from src.metrics import collect, create_metrics
+from src.metrics import collect, create_metrics, collect_json
 
 blueprint = Blueprint("borg_exporter", __name__)
 
@@ -21,6 +21,7 @@ def index():
           <body>
             <h1>Borgmatic Exporter</h1>
             <p><a href="/metrics">Metrics</a></p>
+            <p><a href="/metrics/json">Metrics (JSON)</a></p>
           </body>
         </html>
     """
@@ -34,6 +35,10 @@ def metrics():
     encoder, content_type = choose_encoder(request.headers.get("accept"))
     output = encoder(current_app.config["registry"])
     return output, 200, {"Content-Type": content_type}
+
+@blueprint.route("/metrics/json")
+def json_content():
+    return jsonify(collect_json(current_app.config["borgmatic_config"])), 200
 
 
 def start_http_server(borgmatic_configs, registry, port):

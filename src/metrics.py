@@ -106,6 +106,100 @@ def set_metric(
     c.labels(**labels).set(value)
 
 
+def human_readable_bytes(num_bytes: int, suffix: str = 'B') -> str:
+    """
+    Wandelt eine Byte-Zahl (int) in ein lesbares Format (z.B. 10.5 GB) um.
+    Verwendet den binären Standard (1024).
+
+    Args:
+        num_bytes: Die Zahl der Bytes als Integer.
+        suffix: Der Basis-Suffix (standardmäßig 'B' für Bytes).
+        
+    Returns:
+        Ein formatierter String (z.B. '1.2 KiB' oder '3.4 GB').
+    """
+    
+    # Die Einheiten für den binären Standard (KiB, MiB, GiB, ...)
+    # Dies ist technisch korrekter für Speichergrößen (Basis 1024)
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num_bytes) < 1024.0:
+            # Wenn die Zahl kleiner als 1024 ist, geben wir sie mit der aktuellen Einheit zurück
+            return f"{num_bytes:.1f} {unit}{suffix}"
+        
+        # Teilen durch 1024, um zur nächsten Einheit zu gelangen
+        num_bytes /= 1024.0
+        
+    # Die letzte Einheit (Yotta)
+    return f"{num_bytes:.1f} Yi{suffix}"
+
+
+def collect_json(borgmatic_configs: list):
+    # temporary workaround for https://github.com/borgbackup/borg/issues/7255 to be used together with `--bypass-lock`
+    tmp_env = os.environ.copy()
+    tmp_env["HOME"] = "/tmp/borgmatic-exporter-cache"
+    tmp_env["BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK"] = "yes"
+
+    borgmatic_configs = " -c ".join(borgmatic_configs)
+    # Overall repo info and last archive only
+    repos = run_command(
+        f"borgmatic -c {borgmatic_configs} --verbosity -1 borg info --bypass-lock --json --last 1",
+        tmp_env,
+    )
+    # All archives
+    archives = run_command(
+        f"borgmatic -c {borgmatic_configs} --verbosity -1 borg list --bypass-lock --json",
+        tmp_env,
+    )
+
+    result = []
+
+    for r, a in zip(repos, archives):
+        current_repo = {
+            'location': r["repository"]["location"],
+            'borg_total_backups': len(a.get("archives", [])),
+            'borg_total_chunks': r["cache"]["stats"]["total_chunks"],
+            'borg_total_compressed_size': r["cache"]["stats"]["total_csize"],
+            'borg_total_compressed_size_human': human_readable_bytes(r["cache"]["stats"]["total_csize"]),
+            'borg_total_size': r["cache"]["stats"]["total_size"],
+            'borg_total_size': human_readable_bytes(r["cache"]["stats"]["total_size"]),
+            'borg_total_deduplicated_compressed_size': r["cache"]["stats"]["unique_csize"],
+            'borg_total_deduplicated_compressed_size_human': human_readable_bytes(r["cache"]["stats"]["unique_csize"]),
+            'borg_total_deduplicated_size': r["cache"]["stats"]["unique_size"],
+            'borg_total_deduplicated_size_human': human_readable_bytes(r["cache"]["stats"]["unique_size"])
+        }
+
+        if r.get("archives") and len(r["archives"]) > 0:
+            latest_archive = r["archives"][-1]
+
+            # Last Backup Timestamp
+            current_repo['borg_last_backup_timestamp'] = arrow.get(latest_archive["end"]).replace(tzinfo="local").timestamp()
+
+            # Last Backup 
+            current_repo['borg_last_backup_timestamp_human'] = arrow.get(latest_archive["end"]).replace(tzinfo="local").humanize()
+
+            # Last Backup Duration
+            current_repo['borg_last_backup_duration'] = latest_archive["duration"]
+
+            # Last Backup number of files
+            current_repo['borg_last_backup_files'] = latest_archive["stats"]["nfiles"]
+
+            # Last Backup Deduplicated Compressed Size
+            current_repo['borg_last_backup_deduplicated_compressed_size'] = latest_archive["stats"]["deduplicated_size"]
+            current_repo['borg_last_backup_deduplicated_compressed_size_human'] = human_readable_bytes(latest_archive["stats"]["deduplicated_size"])
+
+            # Last Backup Compressed Size
+            current_repo['borg_last_backup_compressed_size'] = latest_archive["stats"]["compressed_size"]
+            current_repo['borg_last_backup_compressed_size_human'] = human_readable_bytes(latest_archive["stats"]["compressed_size"])
+
+            # Last Backup Size
+            current_repo['borg_last_backup_size'] = latest_archive["stats"]["original_size"]
+            current_repo['borg_last_backup_size_human'] = human_readable_bytes(latest_archive["stats"]["original_size"])
+
+        result.append(current_repo)
+
+    return result
+
+
 def collect(borgmatic_configs: list, registry):
     # temporary workaround for https://github.com/borgbackup/borg/issues/7255 to be used together with `--bypass-lock`
     tmp_env = os.environ.copy()
