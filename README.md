@@ -2,7 +2,7 @@
 
 ![Super-Linter](https://github.com/maxim-mityutko/borgmatic-exporter/actions/workflows/build.yml/badge.svg)
 ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/maxim-mityutko/borgmatic-exporter/master)
-![Static Badge](https://img.shields.io/badge/Borgmatic%20Image-v2.0.7-green)
+![Static Badge](https://img.shields.io/badge/Borgmatic%20Image-v2.0.12-green)
 
 **Borgmatic Exporter** seamlessly integrates Prometheus metrics and Borgmatic. This project is based on
 the [borg-exporter](https://github.com/danihodovic/borg-exporter) by [@danihodovic](https://github.com/danihodovic),
@@ -10,6 +10,7 @@ however it introduces a few changes:
 
 - extra metrics
 - native integration with the official Borgmatic docker image
+- results caching
 
 ## Metrics
 
@@ -47,18 +48,21 @@ docker pull ghcr.io/maxim-mityutko/borgmatic-exporter:latest
 
     **Borgmatic Exporter** supports the following environment variables for customization:
 
-    | Name                    | Description                                                 | Default                     |
-    |-------------------------|-------------------------------------------------------------|-----------------------------|
-    | BORGMATIC_CONFIG        | One or multiple references to Borgmatic configuration files | /etc/borgmatic.d/config.yml |
-    | BORGMATIC_EXPORTER_PORT | Port for the metrics server                                 | 9996                        |
-    | BORGMATIC_EXPORTER_TIME | Display time each Borgmatic call takes                      | false                       |
+    | Name                             | Description                                                                | Default                     |
+    |----------------------------------|----------------------------------------------------------------------------|-----------------------------|
+    | BORGMATIC_CONFIG                 | One or multiple references to Borgmatic configuration files                | /etc/borgmatic.d/config.yml |
+    | BORGMATIC_EXPORTER_HOST          | Host for the metrics server                                                | 0.0.0.0                     |
+    | BORGMATIC_EXPORTER_PORT          | Port for the metrics server                                                | 9996                        |
+    | BORGMATIC_EXPORTER_TIME          | Display time each Borgmatic call takes                                     | false                       |
+    | BORGMATIC_EXPORTER_CACHE_TIMEOUT | Cache the response of the metrics endpoint for the given number of seconds | 600                         |
 
 #### Notes
 
 - Use colon (`:`) if multiple configs should be provided through the environment variable `BORGMATIC_CONFIG`,
     e.g. `/etc/borgmatic/config_1.yml:/etc/borgmatic/config_2.yml`
-- If **keyfiles** need to provided to Borgmatic Exporter, mount the volume containing the keys to both `/root/.config/borg`
-    and to `/tmp/borgmatic-exporter-cache/.config/borg` (ref: [#43](https://github.com/maxim-mityutko/borgmatic-exporter/issues/43))
+- If **keyfiles** need to be provided to Borgmatic Exporter, mount the volume containing the keys to both `/root/.config/borg`
+    and `/tmp/borgmatic-exporter-cache/.config/borg` (ref: [#43](https://github.com/maxim-mityutko/borgmatic-exporter/issues/43))
+- Set `BORGMATIC_EXPORTER_CACHE_TIMEOUT` environment variable to 0 to disable metrics caching
 
 ### Local
 
@@ -75,8 +79,9 @@ python3 cli.py run -c <path-to-your-borgmatic-config-yml>
 
 ### Grafana
 
-* Global view
+- Global view
 ![dashboard.png](observability%2Fdashboard-global.png)
+
 - Repository details view
 ![dashboard.png](observability%2Fdashboard-details.png)
 Dashboard is available in the [repo](/observability/grafana-dashboard.json) or on
@@ -97,21 +102,21 @@ be triggered if there is no backup for repository within 25 hours.
 
 ### Docker
 
-* Build and run
+- Build and run
 
     ```shell
     docker build -t borgmatic:tag .
     docker run --name borgmatic borgmatic:tag
     ```
 
-* Rename or remove existing container, if the same name is already in use
+- Rename or remove existing container, if the same name is already in use
 
     ```shell
     docker container ls -a
     docker container rm container-id
     ```
 
-* Exec into the container and create config
+- Exec into the container and create config
 
     ```shell
     docker exec -it borgmatic /bin/sh
@@ -125,7 +130,7 @@ be triggered if there is no backup for repository within 25 hours.
     borgmatic init --encryption repokey
     ```
 
-* Misc
+- Misc
 
     ```shell
     # Output repo info in JSON format

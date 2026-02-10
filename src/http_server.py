@@ -1,4 +1,5 @@
 from flask import Blueprint, Flask, current_app, jsonify, request
+from flask_caching import Cache
 from loguru import logger
 from prometheus_client.exposition import choose_encoder
 from waitress import serve
@@ -6,6 +7,7 @@ from waitress import serve
 from src.metrics import collect, collect_json, create_metrics
 
 blueprint = Blueprint("borg_exporter", __name__)
+cache = Cache()
 
 
 @blueprint.route("/")
@@ -28,6 +30,7 @@ def index():
 
 
 @blueprint.route("/metrics")
+@cache.cached()
 def metrics():
     borgmatic_config = current_app.config["borgmatic_config"]
     registry = current_app.config["registry"]
@@ -42,12 +45,25 @@ def json_content():
     return jsonify(collect_json(current_app.config["borgmatic_config"])), 200
 
 
-def start_http_server(borgmatic_configs, registry, port):
+def start_http_server(borgmatic_configs, registry, host, port, cache_timeout):
     if isinstance(borgmatic_configs, str):
         borgmatic_configs = (borgmatic_configs,)
     app = Flask(__name__)
     app.config["registry"] = create_metrics(registry)
     app.config["borgmatic_config"] = borgmatic_configs
     app.register_blueprint(blueprint)
+
+    if cache_timeout == 0:
+        cache.init_app(app, config={"CACHE_TYPE": "NullCache"})
+        logger.info("Exporter cache is disabled...")
+    else:
+        cache.init_app(
+            app,
+            config={
+                "CACHE_DEFAULT_TIMEOUT": cache_timeout,
+                "CACHE_TYPE": "SimpleCache",
+            },
+        )
+
     logger.info("Started borgmatic-exporter at port='{}'", port)
-    serve(app, host="0.0.0.0", port=port, _quiet=True)
+    serve(app, host=host, port=port, _quiet=True)
