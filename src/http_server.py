@@ -41,6 +41,7 @@ def metrics():
 
 
 @blueprint.route("/metrics/json")
+@cache.cached()
 def json_content():
     return jsonify(collect_json(current_app.config["borgmatic_config"])), 200
 
